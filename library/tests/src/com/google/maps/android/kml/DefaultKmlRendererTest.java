@@ -2,13 +2,9 @@ package com.google.maps.android.kml;
 
 import android.test.ActivityTestCase;
 
-import com.google.android.gms.maps.model.LatLng;
-
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.HashMap;
 
-public class KmlRendererTest extends ActivityTestCase {
+public class DefaultKmlRendererTest extends ActivityTestCase {
 
     public void testAssignStyleMap() {
         HashMap<String, String> styleMap = new HashMap<String, String>();
@@ -18,7 +14,7 @@ public class KmlRendererTest extends ActivityTestCase {
         KmlStyle redStyle = new KmlStyle();
         styles.put("BlueValue", blueStyle);
         styles.put("RedValue", redStyle);
-        KmlRenderer renderer = new KmlRenderer(null, null);
+        DefaultKmlRenderer renderer = new DefaultKmlRenderer(null, null);
         renderer.assignStyleMap(styleMap, styles);
         assertNotNull(styles.get("BlueKey"));
         assertEquals(styles.get("BlueKey"), styles.get("BlueValue"));
