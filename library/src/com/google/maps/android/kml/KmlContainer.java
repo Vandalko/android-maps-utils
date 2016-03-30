@@ -150,6 +150,10 @@ public class KmlContainer {
         return mProperties.keySet();
     }
 
+    public String setProperty(final String key, final String value) {
+        return mProperties.put(key, value);
+    }
+
     /**
      * Gets an iterable of KmlPlacemarks
      *
