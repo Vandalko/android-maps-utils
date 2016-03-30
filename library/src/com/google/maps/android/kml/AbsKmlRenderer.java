@@ -3,6 +3,7 @@ package com.google.maps.android.kml;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.util.Log;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.BitmapDescriptor;
@@ -20,8 +21,12 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class AbsKmlRenderer {
+
+  private static final String LOG_TAG = "KmlRenderer";
 
   private final ArrayList<String> mMarkerIconUrls;
 
@@ -129,14 +134,17 @@ public abstract class AbsKmlRenderer {
     /*package*/
   static boolean getContainerVisibility(KmlContainer kmlContainer, boolean
       isParentContainerVisible) {
-    boolean isChildContainerVisible = true;
-    if (kmlContainer.hasProperty("visibility")) {
-      String placemarkVisibility = kmlContainer.getProperty("visibility");
-      if (Integer.parseInt(placemarkVisibility) == 0) {
-        isChildContainerVisible = false;
+    if (isParentContainerVisible) {
+      boolean isChildContainerVisible = true;
+      if (kmlContainer.hasProperty("visibility")) {
+        String containerVisibility = kmlContainer.getProperty("visibility");
+        if (Integer.parseInt(containerVisibility) == 0) {
+          isChildContainerVisible = false;
+        }
       }
+      return isChildContainerVisible;
     }
-    return (isParentContainerVisible && isChildContainerVisible);
+    return false;
   }
 
   /**
@@ -156,7 +164,7 @@ public abstract class AbsKmlRenderer {
    */
   private void removeContainers(Iterable<KmlContainer> containers) {
     for (KmlContainer container : containers) {
-      removePlacemarks(container.getPlacemarksHashMap());
+      removePlacemarks(mPlacemarks);
       removeGroundOverlays(container.getGroundOverlayHashMap());
       removeContainers(container.getContainers());
     }
@@ -195,7 +203,7 @@ public abstract class AbsKmlRenderer {
     mGroundOverlays = groundOverlays;
   }
 
-  /* package */ void addLayerToMap() {
+  protected void addLayerToMap() {
     mStylesRenderer.putAll(mStyles);
     assignStyleMap(mStyleMaps, mStylesRenderer);
     addGroundOverlays(mGroundOverlays, mContainers);
@@ -215,7 +223,7 @@ public abstract class AbsKmlRenderer {
    *
    * @return map
    */
-    /* package */ GoogleMap getMap() {
+  protected GoogleMap getMap() {
     return mMap;
   }
 
@@ -224,7 +232,7 @@ public abstract class AbsKmlRenderer {
    *
    * @param map map to place placemark, container, style and ground overlays on
    */
-    /* package */ void setMap(GoogleMap map) {
+  protected void setMap(GoogleMap map) {
     removeLayerFromMap();
     mMap = map;
     addLayerToMap();
@@ -240,7 +248,7 @@ public abstract class AbsKmlRenderer {
    * @return true if there are placemarks, false otherwise
    */
     /* package */ boolean hasKmlPlacemarks() {
-    return mPlacemarks.size() > 0;
+    return mPlacemarks != null && mPlacemarks.size() > 0;
   }
 
   /**
@@ -258,7 +266,7 @@ public abstract class AbsKmlRenderer {
    * @return true if there is at least 1 container within the KmlLayer, false otherwise
    */
     /* package */ boolean hasNestedContainers() {
-    return mContainers.size() > 0;
+    return mContainers != null && mContainers.size() > 0;
   }
 
   /**
@@ -282,7 +290,7 @@ public abstract class AbsKmlRenderer {
   /**
    * Removes all the KML data from the map and clears all the stored placemarks
    */
-    /* package */ void removeLayerFromMap() {
+  protected void removeLayerFromMap() {
     removePlacemarks(mPlacemarks);
     removeGroundOverlays(mGroundOverlays);
     if (hasNestedContainers()) {
@@ -461,7 +469,7 @@ public abstract class AbsKmlRenderer {
   void addContainerGroupIconsToMarkers(String iconUrl,
                                                Iterable<KmlContainer> kmlContainers) {
     for (KmlContainer container : kmlContainers) {
-      addIconToMarkers(iconUrl, container.getPlacemarksHashMap());
+      addIconToMarkers(iconUrl, mPlacemarks);
       if (container.hasContainers()) {
         addContainerGroupIconsToMarkers(iconUrl, container.getContainers());
       }
@@ -535,7 +543,7 @@ public abstract class AbsKmlRenderer {
     boolean hasBalloonOptions = style.hasBalloonStyle();
     boolean hasBalloonText = style.getBalloonOptions().containsKey("text");
     if (hasBalloonOptions && hasBalloonText) {
-      marker.setTitle(style.getBalloonOptions().get("text"));
+      marker.setTitle(parseTextVariables(style.getBalloonOptions().get("text"), placemark));
     } else if (hasBalloonOptions && hasName) {
       marker.setTitle(placemark.getProperty("name"));
     } else if (hasName && hasDescription) {
@@ -544,6 +552,23 @@ public abstract class AbsKmlRenderer {
     } else if (hasDescription) {
       marker.setTitle(placemark.getProperty("description"));
     }
+  }
+
+
+  private String parseTextVariables(final String text, final KmlPlacemark placemark) {
+    final Matcher m = Pattern.compile("\\$\\[(\\w+)\\]").matcher(text);
+    final StringBuffer buffer = new StringBuffer(text.length());
+    while (m.find()) {
+      String variable = m.group(1);
+      String replacement = placemark.getProperty(variable);
+      if (replacement == null) {
+        replacement = "";
+        Log.w("LOG_TAG", "Unknown template variable $[" + variable + "]");
+      }
+      m.appendReplacement(buffer, replacement);
+    }
+    m.appendTail(buffer);
+    return buffer.toString();
   }
 
   /**

@@ -70,7 +70,7 @@ public class KmlLayer {
     /**
      * Adds the KML data to the map
      */
-    public void addLayerToMap() throws IOException, XmlPullParserException {
+    public void addLayerToMap() {
         mRenderer.addLayerToMap();
     }
 

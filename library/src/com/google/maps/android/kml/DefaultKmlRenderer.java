@@ -54,13 +54,13 @@ public class DefaultKmlRenderer extends AbsKmlRenderer {
     }
 
     @Override
-    void addLayerToMap() {
+    protected void addLayerToMap() {
         super.addLayerToMap();
         createInfoWindow();
     }
 
     @Override
-    void removeLayerFromMap() {
+    protected void removeLayerFromMap() {
         super.removeLayerFromMap();
         getMap().setInfoWindowAdapter(null);
     }
